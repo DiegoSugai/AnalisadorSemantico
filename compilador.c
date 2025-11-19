@@ -3,17 +3,16 @@ Grupo:
 Diego Spagnuolo Sugai       | RA: 10417329
 Leonardo Moreira dos Santos | RA: 10417555
 
-Para compilar (Fase 2 no Linux/Codespace):
+Para compilar no Linux/Codespace:
 gcc -Wall -Wno-unused-result -g -Og compilador.c hashMack.o -o compilador
+./compilador fatorial.txt
 */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-#include <math.h> // <- Você incluiu mas não usou, pode manter ou remover
 
-// --- NOVO FASE 2: Estruturas da Tabela de Símbolos ---
 #define PRIME_NUMER 211 // número primo para reduzir colisões
 
 typedef struct _TNo{
@@ -25,10 +24,8 @@ typedef struct _TNo{
 typedef struct {
     TNo *entradas [PRIME_NUMER];
 }TTabelaSimbolos;
-// --- FIM NOVO FASE 2 ---
 
 // Enumeração de todos os "átomos" (tokens) da linguagem PasKenzie.
-// Cada token recebe um código numérico para ser identificado.
 typedef enum {
     ERRO, IDENTIFICADOR, CONSTINT, CONSTCHAR, COMENTARIO, DIV, OR, AND, NOT, IF, THEN, ELSE,
     WHILE, DO, BEGIN, END, READ, WRITE, VAR, PROGRAM, TRUE_TRUE, FALSE_FALSE,
@@ -63,14 +60,12 @@ char *buffer;       // Ponteiro para o código-fonte carregado na memória.
 int nLinha;         // Contador global de linhas.
 TInfoAtomo lookahead; // Armazena o átomo atual que está sendo analisado.
 
-// --- NOVO FASE 2: Variáveis Globais para Semântica e Geração de Código ---
+// Variáveis Globais para Semântica e Geração de Código
 TTabelaSimbolos tabela_simbolos;
 int proximo_endereco = 0; // Contador para o endereço das variáveis
 
-// --- NOVO FASE 2: Declaração da função hash externa ---
+// Declaração da função hash externa
 extern int hashMack(char * s);
-// --- FIM NOVO FASE 2 ---
-
 
 // Funções do Analisador Léxico.
 TInfoAtomo obter_atomo();
@@ -103,23 +98,22 @@ void relational_operator();
 void adding_operator();
 void multiplying_operator();
 
-// --- NOVO FASE 2: Protótipos das funções auxiliares ---
 void inicializar_tabela();
 void insere_simbolo(char* id, int linha);
 int busca_tabela_simbolos(char* id, int linha);
 void imprimir_tabela_simbolos();
 int proximo_rotulo();
-// --- FIM NOVO FASE 2 ---
-
 
 // Função main
 int main(int argc, char *argv[]) {
+
     // Verifica se o nome do arquivo foi passado como argumento na linha de comando
     if (argc != 2) {
         printf("Uso: %s <arquivo_fonte>\n", argv[0]);
         return 1;
     }
-    // Abre o arquivo fonte para leitura.
+
+    // Abre o arquivo fonte para leitura
     FILE *f = fopen(argv[1], "r");
     if (f == NULL) {
         perror("Erro ao abrir o arquivo");
@@ -137,17 +131,19 @@ int main(int argc, char *argv[]) {
         fclose(f);
         return 1;
     }
+
     // Guarda o ponteiro inicial para poder liberar a memória no final
     char *ponteiro_original_para_liberar = buffer;
+
     // Lê o conteúdo do arquivo para o buffer
     fread(buffer, 1, tamanho, f);
     buffer[tamanho] = '\0';
     fclose(f);
     
-    // Inicia a contagem de linhas
+    // Contador para quantidade de linhas
     nLinha = 1;
 
-    // --- MODIFICADO FASE 2: Inicialização e Geração de Código ---
+    // Inicialização e Geração de Código
     inicializar_tabela(); // Prepara a tabela de símbolos
 
     printf("INPP\n"); // Primeira instrução MEPA
@@ -166,13 +162,11 @@ int main(int argc, char *argv[]) {
     printf("\n%d linhas analisadas, programa sintaticamente correto\n", nLinha);
 
     imprimir_tabela_simbolos(); // Imprime a tabela no final
-    // --- FIM MODIFICADO FASE 2 ---
     
     // Libera a memória alocada para o buffer
     free(ponteiro_original_para_liberar);
     return 0;
 }
-
 
 // -------------------------
 // --- ANALISADOR LÉXICO ---
@@ -218,7 +212,7 @@ TInfoAtomo obter_atomo() {
                 printf("# %d: erro lexico, comentario nao fechado.\n", linha_inicio_comentario);
                 exit(1);
             }
-            // --- MODIFICADO FASE 2: Não imprime mais o comentário ---
+            // Não imprime mais o comentário
             // printf("# %d:comentario\n", linha_inicio_comentario); 
             continue;
         }
@@ -302,9 +296,11 @@ void reconhece_id(TInfoAtomo *infoAtomo){
         // exit(1); // O PDF da Fase 2 não é claro se trunca ou dá erro. Vamos truncar.
         tamanho = 15;
     }
+
     // Copia o lexema para o atributo do átomo.
     strncpy(infoAtomo->atributo.id, ini_lexema, tamanho);
     infoAtomo->atributo.id[tamanho] = '\0';
+
     // Compara o lexema com a lista de palavras reservadas.
     if (strcmp(infoAtomo->atributo.id, "div") == 0) infoAtomo->atomo = DIV;
     else if (strcmp(infoAtomo->atributo.id, "or") == 0) infoAtomo->atomo = OR;
@@ -326,6 +322,7 @@ void reconhece_id(TInfoAtomo *infoAtomo){
     else if (strcmp(infoAtomo->atributo.id, "char") == 0) infoAtomo->atomo = CHAR;
     else if (strcmp(infoAtomo->atributo.id, "integer") == 0) infoAtomo->atomo = INTEGER;
     else if (strcmp(infoAtomo->atributo.id, "boolean") == 0) infoAtomo->atomo = BOOLEAN;
+
     // Se não for nenhuma palavra reservada, é um identificador comum.
     else infoAtomo->atomo = IDENTIFICADOR;
 }
@@ -384,7 +381,6 @@ void reconhece_simbolos(TInfoAtomo *infoAtomo){
 // --- ANALISADOR SINTÁTICO ---
 // ----------------------------
 
-// --- MODIFICADO FASE 2 ---
 // Função principal do sintático. Verifica se o token atual é o esperado pela gramática.
 // Se for, avança para o próximo token. Se não, gera um erro sintático.
 // REMOVIDOS TODOS OS PRINTFS DESTA FUNÇÃO
@@ -400,7 +396,6 @@ void consome(TAtomo esperado) {
         exit(1);
     }
 }
-// --- FIM MODIFICADO FASE 2 ---
 
 // Implementa a regra: <program> ::= program identifier ';' <block> '.'
 void program() {
@@ -426,7 +421,7 @@ void block(){
 }
 
 // Implementa a regra: <variable_declaration_part> ::= [ var <variable_declaration> ';' { <variable_declaration> ';' } ]
-// --- MODIFICADO FASE 2: Geração de código AMEM ---
+// Geração de código AMEM
 void variable_declaration_part() {
     while (lookahead.atomo == COMENTARIO) consome(COMENTARIO);
     // A parte de declaração de variáveis é opcional.
@@ -444,33 +439,28 @@ void variable_declaration_part() {
         }
     }
 
-    // --- NOVO FASE 2: Gera AMEM após declarar todas as variáveis ---
+    // Gera AMEM após declarar todas as variáveis
     // proximo_endereco guarda o total de variáveis declaradas
     if (proximo_endereco > 0) {
         printf("\tAMEM %d\n", proximo_endereco);
     }
-    // --- FIM NOVO FASE 2 ---
 }
-// --- FIM MODIFICADO FASE 2 ---
-
 
 // Implementa a regra: <variable_declaration> ::= identifier { ',' identifier } ':' <type>
-// --- MODIFICADO FASE 2: Análise Semântica (Inserção na Tabela) ---
+// Análise Semântica (Inserção na Tabela)
 void variable_declaration() {
     while (lookahead.atomo == COMENTARIO) consome(COMENTARIO);
 
-    // --- NOVO FASE 2: Salva o ID e a linha antes de consumir ---
+    // Salva o ID e a linha antes de consumir
     char id_atual[16];
     int linha_atual = lookahead.linha;
     strncpy(id_atual, lookahead.atributo.id, 16);
     id_atual[15] = '\0';
-    // --- FIM NOVO FASE 2 ---
 
     consome(IDENTIFICADOR);
 
-    // --- NOVO FASE 2: Insere na tabela de símbolos ---
+    // Insere na tabela de símbolos
     insere_simbolo(id_atual, linha_atual); //
-    // --- FIM NOVO FASE 2 ---
 
     // Laço para identificadores separados por vírgula (ex: var a, b: integer).
     while (lookahead.atomo == VIRGULA || lookahead.atomo == COMENTARIO) {
@@ -478,17 +468,15 @@ void variable_declaration() {
         if(lookahead.atomo == VIRGULA){
             consome(VIRGULA);
 
-            // --- NOVO FASE 2: Salva o ID e a linha antes de consumir ---
+            // Salva o ID e a linha antes de consumir
             linha_atual = lookahead.linha;
             strncpy(id_atual, lookahead.atributo.id, 16);
             id_atual[15] = '\0';
-            // --- FIM NOVO FASE 2 ---
 
             consome(IDENTIFICADOR);
 
-            // --- NOVO FASE 2: Insere na tabela de símbolos ---
+            // Insere na tabela de símbolos
             insere_simbolo(id_atual, linha_atual); //
-            // --- FIM NOVO FASE 2 ---
         }
     }
     while (lookahead.atomo == COMENTARIO) consome(COMENTARIO);
@@ -496,15 +484,12 @@ void variable_declaration() {
     while (lookahead.atomo == COMENTARIO) consome(COMENTARIO);
     type();
 }
-// --- FIM MODIFICADO FASE 2 ---
-
 
 // Implementa a regra: <type> ::= char | integer | boolean
 void type() {
     while (lookahead.atomo == COMENTARIO) consome(COMENTARIO);
     
-    // O PDF da Fase 2 simplifica: tudo é tratado como integer
-    // Então, apenas consumimos o tipo, mas não precisamos armazená-lo.
+    // Tudo é tratado como integerm então basta consumir, sem precisar armazenar
     if (lookahead.atomo == CHAR) consome(CHAR);
     else if (lookahead.atomo == INTEGER) consome(INTEGER);
     else if (lookahead.atomo == BOOLEAN) consome(BOOLEAN);
@@ -524,13 +509,10 @@ void statement_part() {
         while (lookahead.atomo == COMENTARIO) consome(COMENTARIO);
         if(lookahead.atomo == PONTO_VIRGULA){
             consome(PONTO_VIRGULA);
-            // --- MODIFICADO FASE 2: Permite "comando vazio" (ex: "begin end" ou ";;") ---
-            // O "else" no seu statement() original causava um erro se encontrasse
-            // um "end" logo após um ";", o que é comum em Pascal.
+
             if(lookahead.atomo != END) {
                 statement();
             }
-            // --- FIM MODIFICADO FASE 2 ---
         }
     }
     while (lookahead.atomo == COMENTARIO) consome(COMENTARIO);
@@ -538,7 +520,7 @@ void statement_part() {
 }
 
 // Implementa a regra: <statement> ::= <assignment_statement> | <read_statement> | ...
-// --- MODIFICADO FASE 2: Lógica de "comando vazio" ---
+// Lógica de "comando vazio"
 void statement() {
     while (lookahead.atomo == COMENTARIO) consome(COMENTARIO);
     // Decide qual tipo de comando analisar com base no token atual.
@@ -548,23 +530,19 @@ void statement() {
     else if (lookahead.atomo == IF) if_statement();
     else if (lookahead.atomo == WHILE) while_statement();
     else if (lookahead.atomo == BEGIN) statement_part();
+    // Permite um comando vazio (não faz nada).
     else {
-        // Permite um comando vazio (não faz nada).
-        // Seu 'consome(READ)' original aqui estava incorreto.
+        
     }
 }
-// --- FIM MODIFICADO FASE 2 ---
 
-
-// Implementa a regra: <assignment_statement> ::= identifier ':=' <expression>
-// --- MODIFICADO FASE 2: Análise Semântica (Busca) e Geração de Código ---
+// Análise Semântica (Busca) e Geração de Código
 void assignment_statement(){
     while (lookahead.atomo == COMENTARIO) consome(COMENTARIO);
 
-    // --- NOVO FASE 2: Análise Semântica e Geração de Código ---
+    // Análise Semântica e Geração de Código
     // 1. Busca o ID e salva o endereço
     int end = busca_tabela_simbolos(lookahead.atributo.id, lookahead.linha);
-    // --- FIM NOVO FASE 2 ---
 
     consome(IDENTIFICADOR);
     while (lookahead.atomo == COMENTARIO) consome(COMENTARIO);
@@ -576,13 +554,11 @@ void assignment_statement(){
 
     // 3. Gera código para armazenar o valor da pilha no endereço da variável
     printf("\tARMZ %d\n", end);
-    // --- FIM NOVO FASE 2 ---
 }
-// --- FIM MODIFICADO FASE 2 ---
 
 
 // Implementa a regra: <read_statement> ::= read '(' identifier { ',' identifier } ')'
-// --- MODIFICADO FASE 2: Análise Semântica e Geração de Código ---
+// Análise Semântica e Geração de Código
 void read_statement() {
     while (lookahead.atomo == COMENTARIO) consome(COMENTARIO);
     consome(READ);
@@ -590,11 +566,10 @@ void read_statement() {
     consome(ABRE_PARENTESES);
     while (lookahead.atomo == COMENTARIO) consome(COMENTARIO);
 
-    // --- NOVO FASE 2: Análise Semântica e Geração de Código ---
+    // Análise Semântica e Geração de Código
     int end = busca_tabela_simbolos(lookahead.atributo.id, lookahead.linha);
     printf("\tLEIT\n");
     printf("\tARMZ %d\n", end);
-    // --- FIM NOVO FASE 2 ---
 
     consome(IDENTIFICADOR);
 
@@ -603,11 +578,10 @@ void read_statement() {
         if(lookahead.atomo == VIRGULA){
             consome(VIRGULA);
 
-            // --- NOVO FASE 2: Análise Semântica e Geração de Código ---
+            // Análise Semântica e Geração de Código
             end = busca_tabela_simbolos(lookahead.atributo.id, lookahead.linha);
             printf("\tLEIT\n");
             printf("\tARMZ %d\n", end);
-            // --- FIM NOVO FASE 2 ---
 
             consome(IDENTIFICADOR);
         }
@@ -615,11 +589,9 @@ void read_statement() {
     while (lookahead.atomo == COMENTARIO) consome(COMENTARIO);
     consome(FECHA_PARENTESES);
 }
-// --- FIM MODIFICADO FASE 2 ---
-
 
 // Implementa a regra: <write_statement> ::= write '(' identifier { ',' identifier } ')'
-// --- MODIFICADO FASE 2: Análise Semântica e Geração de Código ---
+// Análise Semântica e Geração de Código
 void write_statement() {
     while (lookahead.atomo == COMENTARIO) consome(COMENTARIO);
     consome(WRITE);
@@ -627,11 +599,10 @@ void write_statement() {
     consome(ABRE_PARENTESES);
     while (lookahead.atomo == COMENTARIO) consome(COMENTARIO);
 
-    // --- NOVO FASE 2: Análise Semântica e Geração de Código ---
+    // Análise Semântica e Geração de Código
     int end = busca_tabela_simbolos(lookahead.atributo.id, lookahead.linha);
     printf("\tCRVL %d\n", end);
     printf("\tIMPR\n");
-    // --- FIM NOVO FASE 2 ---
 
     consome(IDENTIFICADOR);
     while (lookahead.atomo == VIRGULA || lookahead.atomo == COMENTARIO) {
@@ -639,11 +610,10 @@ void write_statement() {
         if(lookahead.atomo == VIRGULA){
             consome(VIRGULA);
             
-            // --- NOVO FASE 2: Análise Semântica e Geração de Código ---
+            // Análise Semântica e Geração de Código
             end = busca_tabela_simbolos(lookahead.atributo.id, lookahead.linha);
             printf("\tCRVL %d\n", end);
             printf("\tIMPR\n");
-            // --- FIM NOVO FASE 2 ---
             
             consome(IDENTIFICADOR);
         }
@@ -651,15 +621,12 @@ void write_statement() {
     while (lookahead.atomo == COMENTARIO) consome(COMENTARIO);
     consome(FECHA_PARENTESES);
 }
-// --- FIM MODIFICADO FASE 2 ---
-
 
 // Implementa a regra: <if_statement> ::= if <expression> then <statement> [ else <statement> ]
-// --- MODIFICADO FASE 2: Geração de Código ---
+// Geração de Código
 void if_statement() {
     while (lookahead.atomo == COMENTARIO) consome(COMENTARIO);
     
-    // --- NOVO FASE 2: Geração de Código IF-THEN-ELSE ---
     int L1 = proximo_rotulo();
 
     consome(IF);
@@ -674,7 +641,6 @@ void if_statement() {
     
     while (lookahead.atomo == COMENTARIO) consome(COMENTARIO);
     
-    // A parte 'else' é opcional.
     if (lookahead.atomo == ELSE) {
         int L2 = proximo_rotulo();
         printf("\tDSVS L%d\n", L2); // 4. Desvia para L2 (fim do IF)
@@ -688,17 +654,14 @@ void if_statement() {
         // Caso 'if' sem 'else'
         printf("L%d:\tNADA\n", L1); // 4. Rótulo para onde o falso pula
     }
-    // --- FIM NOVO FASE 2 ---
 }
-// --- FIM MODIFICADO FASE 2 ---
-
 
 // Implementa a regra: <while_statement> ::= while <expression> do <statement>
-// --- MODIFICADO FASE 2: Geração de Código ---
+// Geração de Código
 void while_statement() {
     while (lookahead.atomo == COMENTARIO) consome(COMENTARIO);
 
-    // --- NOVO FASE 2: Geração de Código WHILE-DO ---
+    // Geração de Código WHILE-DO
     int L1 = proximo_rotulo(); // Rótulo de início da expressão
     int L2 = proximo_rotulo(); // Rótulo de saída do loop
     
@@ -716,31 +679,27 @@ void while_statement() {
 
     printf("\tDSVS L%d\n", L1); // 5. Desvia de volta para L1 (teste)
     printf("L%d:\tNADA\n", L2); // 6. Rótulo de saída
-    // --- FIM NOVO FASE 2 ---
 }
-// --- FIM MODIFICADO FASE 2 ---
 
 
 // Implementa a regra: <expression> ::= <simple_expression> [ <relational_operator> <simple_expression> ]
-// --- MODIFICADO FASE 2: Geração de Código ---
+// Geração de Código
 void expression() {
     while (lookahead.atomo == COMENTARIO) consome(COMENTARIO);
     simple_expression();
     while (lookahead.atomo == COMENTARIO) consome(COMENTARIO);
     
-    // A parte com o operador relacional é opcional.
     if (lookahead.atomo == MENOR || lookahead.atomo == MAIOR || lookahead.atomo == MENOR_IGUAL ||
         lookahead.atomo == MAIOR_IGUAL || lookahead.atomo == NEGACAO || lookahead.atomo == IGUAL ||
         lookahead.atomo == OR || lookahead.atomo == AND ) {
         
-        // --- NOVO FASE 2: Salva o operador ---
+        // Salva o operador
         TAtomo op = lookahead.atomo;
-        // --- FIM NOVO FASE 2 ---
         
         relational_operator();
         simple_expression();
 
-        // --- NOVO FASE 2: Gera código para o operador ---
+        // Gera código para o operador
         switch (op) {
             case MENOR:       printf("\tCMME\n"); break;
             case MAIOR:       printf("\tCMMA\n"); break;
@@ -752,10 +711,8 @@ void expression() {
             case AND:         printf("\tCONJ\n"); break; // Conjunção (E lógico)
             default: break;
         }
-        // --- FIM NOVO FASE 2 ---
     }
 }
-// --- FIM MODIFICADO FASE 2 ---
 
 
 // Implementa a regra: <relational_operator> ::= '<>' | '<' | ...
@@ -777,7 +734,7 @@ void relational_operator() {
 }
 
 // Implementa a regra: <simple_expression> ::= <term> { <adding_operator> <term> }
-// --- MODIFICADO FASE 2: Geração de Código ---
+// Geração de Código
 void simple_expression() {
     while (lookahead.atomo == COMENTARIO) consome(COMENTARIO);
     term();
@@ -785,22 +742,18 @@ void simple_expression() {
         while (lookahead.atomo == COMENTARIO) consome(COMENTARIO);
         if(lookahead.atomo == MAIS || lookahead.atomo == MENOS){
 
-            // --- NOVO FASE 2: Salva o operador ---
+            // Salva o operador
             TAtomo op = lookahead.atomo;
-            // --- FIM NOVO FASE 2 ---
 
             adding_operator();
             term();
 
-            // --- NOVO FASE 2: Gera código para o operador ---
+            // Gera código para o operador
             if (op == MAIS) printf("\tSOMA\n");
             else if (op == MENOS) printf("\tSUBT\n");
-            // --- FIM NOVO FASE 2 ---
         }
     }
 }
-// --- FIM MODIFICADO FASE 2 ---
-
 
 // Implementa a regra: <adding_operator> ::= '+' | '-'
 void adding_operator() {
@@ -814,7 +767,7 @@ void adding_operator() {
 }
 
 // Implementa a regra: <term> ::= <factor> { <multiplying_operator> <factor> }
-// --- MODIFICADO FASE 2: Geração de Código ---
+// Geração de Código
 void term() {
     while (lookahead.atomo == COMENTARIO) consome(COMENTARIO);
     factor();
@@ -822,22 +775,19 @@ void term() {
         while (lookahead.atomo == COMENTARIO) consome(COMENTARIO);
         if(lookahead.atomo == ASTERISCO || lookahead.atomo == DIV){
             
-            // --- NOVO FASE 2: Salva o operador ---
+            // Salva o operador
             TAtomo op = lookahead.atomo;
-            // --- FIM NOVO FASE 2 ---
+
             
             multiplying_operator();
             factor();
 
-            // --- NOVO FASE 2: Gera código para o operador ---
+            // Gera código para o operador
             if (op == ASTERISCO) printf("\tMULT\n");
             else if (op == DIV) printf("\tDIVI\n");
-            // --- FIM NOVO FASE 2 ---
         }
     }
 }
-// --- FIM MODIFICADO FASE 2 ---
-
 
 // Implementa a regra: <multiplying_operator> ::= '*' | div
 void multiplying_operator() {
@@ -851,27 +801,24 @@ void multiplying_operator() {
 }
 
 // Implementa a regra: <factor> ::= identifier | constint | constchar | ...
-// --- MODIFICADO FASE 2: Análise Semântica (Busca) e Geração de Código ---
+// Análise Semântica (Busca) e Geração de Código
 void factor() {
     while (lookahead.atomo == COMENTARIO) consome(COMENTARIO);
     
     if (lookahead.atomo == IDENTIFICADOR) {
-        // --- NOVO FASE 2: Análise Semântica e Geração de Código ---
+        // Análise Semântica e Geração de Código
         int end = busca_tabela_simbolos(lookahead.atributo.id, lookahead.linha);
         printf("\tCRVL %d\n", end);
-        // --- FIM NOVO FASE 2 ---
         consome(IDENTIFICADOR);
 
     } else if (lookahead.atomo == CONSTINT) {
-        // --- NOVO FASE 2: Geração de Código ---
+        // Geração de Código
         printf("\tCRCT %d\n", lookahead.atributo.numero);
-        // --- FIM NOVO FASE 2 ---
         consome(CONSTINT);
 
     } else if (lookahead.atomo == CONSTCHAR) {
-        // --- NOVO FASE 2: Geração de Código (trata char como int) ---
+        // Geração de Código (trata char como int)
         printf("\tCRCT %d\n", (int)lookahead.atributo.ch);
-        // --- FIM NOVO FASE 2 ---
         consome(CONSTCHAR);
 
     } else if (lookahead.atomo == ABRE_PARENTESES) {
@@ -882,20 +829,17 @@ void factor() {
     } else if (lookahead.atomo == NOT) {
         consome(NOT);
         factor();
-        // --- NOVO FASE 2: Geração de Código ---
+        // Geração de Código
         printf("\tNEGA\n"); // Negação aritmética (pode ser usado para NOT lógico também)
-        // --- FIM NOVO FASE 2 ---
 
     } else if (lookahead.atomo == TRUE_TRUE) {
-        // --- NOVO FASE 2: Geração de Código ---
+        // Geração de Código
         printf("\tCRCT 1\n"); // true é 1
-        // --- FIM NOVO FASE 2 ---
         consome(TRUE_TRUE);
 
     } else if (lookahead.atomo == FALSE_FALSE) {
-        // --- NOVO FASE 2: Geração de Código ---
+        // Geração de Código
         printf("\tCRCT 0\n"); // false é 0
-        // --- FIM NOVO FASE 2 ---
         consome(FALSE_FALSE);
 
     } else {
@@ -903,24 +847,14 @@ void factor() {
         exit(1);
     }
 }
-// --- FIM MODIFICADO FASE 2 ---
 
-
-// ------------------------------------
-// --- NOVAS FUNÇÕES (FASE 2) ---
-// ------------------------------------
-
-// --- NOVO FASE 2 ---
 // Inicializa a tabela de símbolos com ponteiros NULOS
 void inicializar_tabela() {
     for (int i = 0; i < PRIME_NUMER; i++) {
         tabela_simbolos.entradas[i] = NULL;
     }
 }
-// --- FIM NOVO FASE 2 ---
 
-
-// --- NOVO FASE 2 ---
 // Insere um novo identificador na tabela de símbolos
 void insere_simbolo(char* id, int linha) {
     int indice = hashMack(id);
@@ -949,10 +883,7 @@ void insere_simbolo(char* id, int linha) {
 
     proximo_endereco++; // Próxima variável terá o próximo endereço
 }
-// --- FIM NOVO FASE 2 ---
 
-
-// --- NOVO FASE 2 ---
 // Busca um identificador na tabela. Retorna o endereço se encontrar.
 // Se não encontrar, gera um erro semântico.
 int busca_tabela_simbolos(char* id, int linha) {
@@ -961,7 +892,7 @@ int busca_tabela_simbolos(char* id, int linha) {
 
     while (no_atual != NULL) {
         if (strcmp(no_atual->ID, id) == 0) {
-            return no_atual->endereco; // Encontrado! Retorna o endereço
+            return no_atual->endereco; // Encontrado, ou seja retorna o endereço
         }
         no_atual = no_atual->prox;
     }
@@ -970,17 +901,14 @@ int busca_tabela_simbolos(char* id, int linha) {
     printf("# %d: erro semantico, identificador [%s] nao declarado.\n", linha, id);
     exit(1);
 }
-// --- FIM NOVO FASE 2 ---
 
-
-// --- NOVO FASE 2 ---
 // Imprime a tabela de símbolos no formato exigido
 void imprimir_tabela_simbolos() {
     printf("\nTABELA DE SIMBOLOS\n");
     for (int i = 0; i < PRIME_NUMER; i++) {
         TNo* no_atual = tabela_simbolos.entradas[i];
         if (no_atual != NULL) {
-            printf("Entrada Tabela Simbolos: [%d]\n", i);
+            printf("Entrada Tabela Simbolos: [%d]", i);
             while (no_atual != NULL) {
                 printf(" => %s | Endereco: %d\n", no_atual->ID, no_atual->endereco);
                 no_atual = no_atual->prox;
@@ -988,13 +916,9 @@ void imprimir_tabela_simbolos() {
         }
     }
 }
-// --- FIM NOVO FASE 2 ---
 
-
-// --- NOVO FASE 2 ---
 // Retorna um novo rótulo sequencial para a geração de código
 int proximo_rotulo() {
     static int rotulo_contador = 1;
     return rotulo_contador++;
 }
-// --- FIM NOVO FASE 2 ---
