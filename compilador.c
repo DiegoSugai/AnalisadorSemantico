@@ -460,7 +460,7 @@ void variable_declaration() {
     consome(IDENTIFICADOR);
 
     // Insere na tabela de símbolos
-    insere_simbolo(id_atual, linha_atual); //
+    insere_simbolo(id_atual, linha_atual); 
 
     // Laço para identificadores separados por vírgula (ex: var a, b: integer).
     while (lookahead.atomo == VIRGULA || lookahead.atomo == COMENTARIO) {
